@@ -29,9 +29,13 @@ ggplot(data = bike, aes(x=atemp, y = count))+
   geom_point()+
   geom_smooth(se=FALSE)
 
-skimr::skim(bike)
 install.packages("skimr")
 library(skimr)
+skimr::skim(bike)
+
+ggplot(data= bike, aes(x=humidity,y= count)) +
+  geom_point() +
+  geom_smooth(se=FALSE)
 
 ggplot(data= bike, aes(x=datetime,y= count)) +
   geom_point() +
@@ -52,7 +56,33 @@ ggplot(data = bike, aes(x = weather, y = count))+
   xlab("Weather")+
   ylab("Number of Bikes")
 
+ggplot(data = bike, aes(x =atemp, y = count))+
+  geom_histogram()
 
 
+# Plot 1: 
+ggplot(data= bike, aes(x=humidity,y= count)) +
+  geom_point() +
+  geom_smooth(se=FALSE)
+# Plot 2:
+ggplot(data = bike, aes(x = weather, y = count))+
+  geom_bar(stat = "identity")+
+  xlab("Weather")+
+  ylab("Number of Bikes")
+# Plot 3:
+plot_correlation(bike)
+# Plot 4:
+plot_histogram(bike)
 
+library(patchwork)
+plot1<- ggplot(data= bike, aes(x=humidity,y= count)) +
+  geom_point() +
+  geom_smooth(se=FALSE)
+plot2<- ggplot(data = bike, aes(x = weather, y = count))+
+  geom_bar(stat = "identity")+
+  xlab("Weather")+
+  ylab("Number of Bikes")
+plot3<- plot_correlation(bike)
+plot4<- plot_histogram(bike)
+(plot1 + plot2)/(plot3 + plot4)
 
