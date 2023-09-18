@@ -41,9 +41,17 @@ ggplot(data= bike, aes(x=datetime,y= count)) +
   geom_point() +
   geom_smooth(se=FALSE)
 
-ggplot(data= bike, aes(x=windspeed,y= count)) +
-  geom_point() +
-  geom_smooth(se=FALSE)
+bike$weather <- factor(bike$weather, levels = 1:4, labels = c("Sunny", "Mist", "Rain", "Other"))
+bike$season <- factor(bike$season, levels = 1:4, labels = c("Spring","Summer","Fall","Winter"))
+
+# Now, create the boxplot
+library(ggplot2)
+
+ggplot(data = bike, aes(x = weather, y = count)) +
+  geom_boxplot()
+
+ggplot(data = bike, aes(x = season, fill = season))+
+  geom_bar()
 
 ggplot(data= bike, aes(x=datetime,y= count)) +
   geom_density(fill = "blue",alpha=.5)
@@ -70,9 +78,11 @@ ggplot(data = bike, aes(x = weather, y = count))+
   xlab("Weather")+
   ylab("Number of Bikes")
 # Plot 3:
-plot_correlation(bike)
+ggplot(data = bike, aes(x = weather, y = count)) +
+  geom_boxplot()
 # Plot 4:
-plot_histogram(bike)
+ggplot(data = bike, aes(x = season, fill = season))+
+  geom_bar()
 
 library(patchwork)
 plot1<- ggplot(data= bike, aes(x=humidity,y= count)) +
@@ -82,7 +92,9 @@ plot2<- ggplot(data = bike, aes(x = weather, y = count))+
   geom_bar(stat = "identity")+
   xlab("Weather")+
   ylab("Number of Bikes")
-plot3<- plot_correlation(bike)
-plot4<- plot_histogram(bike)
+plot3<- ggplot(data = bike, aes(x = weather, y = count)) +
+  geom_boxplot()
+plot4<- ggplot(data = bike, aes(x = season, fill = season))+
+  geom_bar()
 (plot1 + plot2)/(plot3 + plot4)
 
