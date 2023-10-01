@@ -97,6 +97,14 @@ vroom_write(x=Penalized_regression, file="./TestPenalizedPreds.csv", delim=",")
 
 ###############
 
+# bike_train$count_trans <- log(bike_train$count)
+# myRecipe <- recipe(count_trans~., data = bike_train) %>%
+#   step_mutate(weather = ifelse(weather==4, 3,weather)) %>%
+#   step_mutate(weather=factor(weather, levels=1:3, labels=c("Sunny", "Mist", "Rain"))) %>%
+#   step_mutate(holiday=factor(holiday, levels=c(0,1), labels=c("No", "Yes"))) %>%
+#   step_mutate(workingday=factor(workingday,levels=c(0,1), labels=c("No", "Yes"))) %>%
+#   step_time(datetime, features="hour")
+
 preg_model <- linear_reg(penalty=tune(),
                          mixture = tune()) %>% 
   set_engine("glmnet")
@@ -107,14 +115,14 @@ preg_wf <- workflow() %>%
 
 tuning_grid <- grid_regular(penalty(),
                             mixture(),
-                            levels = 5)
+                            levels = 10)
 
 folds <- vfold_cv(bike_train, v= 5, repeats = 5)
 
 CV_results <- preg_wf %>% 
   tune_grid(resamples=folds,
             grid=tuning_grid,
-            metrics= metric_set(rmse,mae,rsq))
+            metrics= metric_set(rmse, mae, rsq))
 
 collect_metrics(CV_results) %>% 
   filter(.metric=="rmse") %>% 
@@ -130,16 +138,76 @@ final_wf <-
   fit(data = bike_train)
 
 final_wf %>% 
-  predict(new_data = bike_test)
+  predict(new_data = bike_test) %>% 
+  bind_cols(., bike_test) %>% 
+  select(datetime, .pred) %>% 
+  rename(count=.pred) %>% 
+  mutate(count=pmax(0, count)) %>% 
+  mutate(datetime=as.character(format(datetime))) 
+vroom_write(x=bike_predictions, file="./TuningPreds.csv", delim=",")
+
+#### Regression Trees #####
+
+install.packages("rpart")
+library(rpart)
+library(tidymodels)
+
+preg_model <- linear_reg(penalty=tune(),
+                         mixture = tune()) %>% 
+  set_engine("glmnet")
+
+my_mod <- decision_tree(tree_depth = tune(),
+                        cost_complexity= tune(),
+                        min_n = tune()) %>% 
+  set_engine("rpart") %>% 
+  set_mode("regression")
+
+myRecipe <- recipe(count~., data = bike_train) %>% 
+  step_mutate(weather = ifelse(weather==4, 3,weather)) %>% 
+  step_mutate(weather=factor(weather, levels=1:3, labels=c("Sunny", "Mist", "Rain"))) %>%
+  step_mutate(holiday=factor(holiday, levels=c(0,1), labels=c("No", "Yes"))) %>%
+  step_mutate(workingday=factor(workingday,levels=c(0,1), labels=c("No", "Yes"))) %>%
+  step_time(datetime, features="hour")
+prepped_recipe<- prep(myRecipe)
+
+bike_tree_workflow <- workflow() %>% 
+  add_recipe(myRecipe) %>% 
+  add_model(c(my_mod,preg_model)) 
+
+tuning_grid <- grid_regular(penalty(),
+                            mixture(),
+                            levels = 10)
+
+folds <- vfold_cv(bike_train, v= 5, repeats = 5)
 
 
+CV_results <- bike_tree_workflow %>% 
+  tune_grid(resamples=folds,
+            grid=tuning_grid,
+            metrics=NULL)
 
 
+collect_metrics(CV_results) %>% 
+  filter(.metric=="rmse")
 
 
+bestTune <- CV_results %>% 
+  select_best("rmse")
 
 
+final_wf <-
+  preg_wf %>% 
+  finalize_workflow(bestTune) %>% 
+  fit(data = bike_train)
 
+final_wf %>% 
+  predict(new_data = bike_test) %>% 
+  bind_cols(., bike_test) %>% 
+  select(datetime, .pred) %>% 
+  rename(count=.pred) %>% 
+  mutate(count=pmax(0, count)) %>% 
+  mutate(datetime=as.character(format(datetime))) 
+vroom_write(x=bike_tree_predictions, file="./RegressionTreePreds.csv", delim=",")
 
 
 
